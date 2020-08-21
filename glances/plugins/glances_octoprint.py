@@ -1,0 +1,139 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of Glances.
+#
+# Copyright (C) 2018 Tim Nibert <docz2a@gmail.com>
+#
+# Glances is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Glances is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+"""
+Octoprint device state plugin
+"""
+from pprint import pprint
+
+import requests
+from urllib3.exceptions import NewConnectionError
+
+from glances.plugins.glances_plugin import GlancesPlugin
+
+
+class Plugin(GlancesPlugin):
+    """
+    Glances' HDD SMART plugin.
+
+    stats is a list of dicts
+    """
+
+    def __init__(self, args=None, config=None, stats_init_value=[]):
+        """Init the plugin."""
+        super(Plugin, self).__init__(args=args, config=config)
+        self.display_curse = True
+
+        self.api_key = "D6968DF6F0E248D8B2B56476C8D7ED92"
+        self.printer_url = "http://0.0.0.0:5000/api/printer"
+        self.job_url = "http://0.0.0.0:5000/api/job"
+        self.headers = {"X-Api-Key": self.api_key}
+
+    @GlancesPlugin._check_decorator
+    @GlancesPlugin._log_result_decorator
+    def update(self):
+        """Update octoprint stats using the request."""
+
+        stats = self.get_init_value()
+        try:
+            printer = requests.get(url=self.printer_url, headers=self.headers)
+            job = requests.get(url=self.job_url, headers=self.headers)
+        except Exception as e:
+            stats["state"] = "Error"
+            stats["error"] = f"Unable to connect: {str(e)}"
+            self.stats = stats
+            return self.stats
+
+        if printer.status_code != 200:
+            stats["state"] = "Error"
+            stats["error"] = printer.text
+        else:
+            job = job.json()
+            printer = printer.json()
+            stats["estimatedPrintTime"] = job["job"]["estimatedPrintTime"]
+            stats["progress_printTime"] = job["progress"]["printTime"]
+            stats["progress_printTimeLeft"] = job["progress"]["printTimeLeft"]
+            stats["state"] = job["state"]
+            stats["temperature"] = printer["temperature"]
+
+        self.stats = stats
+        return self.stats
+
+    def update_views(self):
+        """Update stats views."""
+        # Call the father's method
+        super(Plugin, self).update_views()
+
+    def msg_curse(self, args=None, max_width=None):
+        """Return the dict to display in the curse interface."""
+        # Init the return message
+        ret = []
+
+        # Only process if stats exist...
+        if not self.stats or self.is_disable():
+            return ret
+        # Max size for the interface name
+        name_max_width = max_width - 11
+        msg = '{:{width}}'.format(f'OCTOPRINT {self.stats["state"]}', width=name_max_width)
+        ret.append(self.curse_add_line(msg, "TITLE"))
+        ret.append(self.curse_new_line())
+
+        if "error" in self.stats:
+            msg = '{:{width}}'.format(self.stats["error"], width=name_max_width)
+            ret.append(self.curse_add_line(msg, "DEFAULT"))
+            return ret
+
+        msg = '{:{width}}'.format("Temperature", width=name_max_width)
+        ret.append(self.curse_add_line(msg, "DEFAULT"))
+        msg = '{:}'.format("actual target")
+
+        name_max_width = max_width - 10
+        ret.append(self.curse_add_line(msg, "DEFAULT"))
+        ret.append(self.curse_new_line())
+        for key in self.stats["temperature"]:
+            tool = self.stats["temperature"][key]
+            actual = None
+            target = None
+            if tool["actual"] is not None:
+                actual = int(tool["actual"])
+            if tool["target"] is not None:
+                target = int(tool["target"])
+            tool_msg = "{:{width}}".format(key, width=name_max_width)
+            ret.append(self.curse_add_line(tool_msg))
+            tool_msg = "{actual:>3}°C  {target:>3}°C".format(key=key, actual=str(actual), target=str(target))
+            ret.append(self.curse_add_line(tool_msg))
+            ret.append(self.curse_new_line())
+
+        name_max_width = max_width - 5
+        actual = None
+        target = None
+        if self.stats["progress_printTime"] is not None:
+            actual = int(self.stats["progress_printTime"])
+        if self.stats["progress_printTimeLeft"] is not None:
+            target = int(self.stats["progress_printTimeLeft"])
+        msg = '{:{width}}'.format("Time passed:", width=name_max_width)
+        ret.append(self.curse_add_line(msg))
+        tool_msg = "{actual:>6}s".format(actual=str(actual))
+        ret.append(self.curse_add_line(tool_msg))
+        ret.append(self.curse_new_line())
+        msg = '{:{width}}'.format("Time left:", width=name_max_width)
+        ret.append(self.curse_add_line(msg))
+        tool_msg = "{target:>6}s".format(target=str(target))
+        ret.append(self.curse_add_line(tool_msg))
+        return ret

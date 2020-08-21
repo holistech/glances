@@ -38,12 +38,11 @@ try:
 except ImportError:
     logger.critical("Curses module not found. Glances cannot start in standalone mode.")
     if WINDOWS:
-	    logger.critical("For Windows you can try installing windows-curses with pip install.")
+        logger.critical("For Windows you can try installing windows-curses with pip install.")
     sys.exit(1)
 
 
 class _GlancesCurses(object):
-
     """This class manages the curses display (and key pressed).
 
     Note: It is a private class, use GlancesCursesClient or GlancesCursesBrowser.
@@ -98,8 +97,8 @@ class _GlancesCurses(object):
     _quicklook_max_width = 68
 
     # Define left sidebar
-    _left_sidebar = ['network', 'connections', 'wifi', 'ports', 'diskio', 'fs',
-                     'irq', 'folders', 'raid', 'smart', 'sensors', 'now']
+    _left_sidebar = ['network', 'octoprint', 'connections', 'wifi', 'ports', 'diskio', 'fs',
+                     'irq', 'folders', 'raid', 'smart', 'sensors',  'now']
     _left_sidebar_min_width = 23
     _left_sidebar_max_width = 34
 
@@ -516,15 +515,15 @@ class _GlancesCurses(object):
 
         # Adapt number of processes to the available space
         max_processes_displayed = (
-            self.term_window.getmaxyx()[0] - 11 -
-            (0 if 'docker' not in __stat_display else
-                self.get_stats_display_height(__stat_display["docker"])) -
-            (0 if 'processcount' not in __stat_display else
-                self.get_stats_display_height(__stat_display["processcount"])) -
-            (0 if 'amps' not in __stat_display else
-                self.get_stats_display_height(__stat_display["amps"])) -
-            (0 if 'alert' not in __stat_display else
-                self.get_stats_display_height(__stat_display["alert"])))
+                self.term_window.getmaxyx()[0] - 11 -
+                (0 if 'docker' not in __stat_display else
+                 self.get_stats_display_height(__stat_display["docker"])) -
+                (0 if 'processcount' not in __stat_display else
+                 self.get_stats_display_height(__stat_display["processcount"])) -
+                (0 if 'amps' not in __stat_display else
+                 self.get_stats_display_height(__stat_display["amps"])) -
+                (0 if 'alert' not in __stat_display else
+                 self.get_stats_display_height(__stat_display["alert"])))
 
         try:
             if self.args.enable_process_extended:
@@ -539,8 +538,7 @@ class _GlancesCurses(object):
             glances_processes.max_processes = max_processes_displayed
 
         # Get the processlist
-        __stat_display["processlist"] = stats.get_plugin(
-            'processlist').get_stats_display(args=self.args)
+        __stat_display["processlist"] = stats.get_plugin('processlist').get_stats_display(args=self.args)
 
         # Display the stats on the curses interface
         ###########################################
@@ -548,9 +546,7 @@ class _GlancesCurses(object):
         # Help screen (on top of the other stats)
         if self.args.help_tag:
             # Display the stats...
-            self.display_plugin(
-                stats.get_plugin('help').get_stats_display(args=self.args))
-            # ... and exit
+            self.display_plugin(stats.get_plugin('help').get_stats_display(args=self.args))
             return False
 
         # =====================================
@@ -647,21 +643,25 @@ class _GlancesCurses(object):
         # Dict for plugins width
         plugin_widths = {}
         for p in self._top:
-            plugin_widths[p] = self.get_stats_display_width(stat_display.get(p, 0)) if hasattr(self.args, 'disable_' + p) else 0
+            plugin_widths[p] = self.get_stats_display_width(stat_display.get(p, 0)) if hasattr(self.args,
+                                                                                               'disable_' + p) else 0
 
         # Width of all plugins
         stats_width = sum(itervalues(plugin_widths))
 
         # Number of plugin but quicklook
-        stats_number = sum([int(stat_display[p]['msgdict'] != []) for p in self._top if not getattr(self.args, 'disable_' + p)])
+        stats_number = sum(
+            [int(stat_display[p]['msgdict'] != []) for p in self._top if not getattr(self.args, 'disable_' + p)])
 
         if not self.args.disable_quicklook:
             # Quick look is in the place !
             if self.args.full_quicklook:
-                quicklook_width = self.term_window.getmaxyx()[1] - (stats_width + 8 + stats_number * self.space_between_column)
+                quicklook_width = self.term_window.getmaxyx()[1] - (
+                            stats_width + 8 + stats_number * self.space_between_column)
             else:
-                quicklook_width = min(self.term_window.getmaxyx()[1] - (stats_width + 8 + stats_number * self.space_between_column),
-                                      self._quicklook_max_width - 5)
+                quicklook_width = min(
+                    self.term_window.getmaxyx()[1] - (stats_width + 8 + stats_number * self.space_between_column),
+                    self._quicklook_max_width - 5)
             try:
                 stat_display["quicklook"] = stats.get_plugin(
                     'quicklook').get_stats_display(max_width=quicklook_width, args=self.args)
@@ -685,9 +685,11 @@ class _GlancesCurses(object):
                 # No space ? Remove optional stats
                 if self.space_between_column < 3:
                     plugin_display_optional[p] = False
-                    plugin_widths[p] = self.get_stats_display_width(stat_display[p], without_option=True) if hasattr(self.args, 'disable_' + p) else 0
+                    plugin_widths[p] = self.get_stats_display_width(stat_display[p], without_option=True) if hasattr(
+                        self.args, 'disable_' + p) else 0
                     stats_width = sum(itervalues(plugin_widths)) + 1
-                    self.space_between_column = max(1, int((self.term_window.getmaxyx()[1] - stats_width) / (stats_number - 1)))
+                    self.space_between_column = max(1, int(
+                        (self.term_window.getmaxyx()[1] - stats_width) / (stats_number - 1)))
         else:
             self.space_between_column = 0
 
@@ -746,7 +748,8 @@ class _GlancesCurses(object):
                     self.display_plugin(stat_display['processlist'],
                                         display_optional=(self.term_window.getmaxyx()[1] > 102),
                                         display_additional=(not MACOS),
-                                        max_y=(self.term_window.getmaxyx()[0] - self.get_stats_display_height(stat_display['alert']) - 2))
+                                        max_y=(self.term_window.getmaxyx()[0] - self.get_stats_display_height(
+                                            stat_display['alert']) - 2))
                 else:
                     self.display_plugin(stat_display[p])
 
@@ -1025,14 +1028,12 @@ class _GlancesCurses(object):
 
 
 class GlancesCursesStandalone(_GlancesCurses):
-
     """Class for the Glances curse standalone."""
 
     pass
 
 
 class GlancesCursesClient(_GlancesCurses):
-
     """Class for the Glances curse client."""
 
     pass
