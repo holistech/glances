@@ -20,10 +20,11 @@
 """
 Octoprint device state plugin
 """
-from pprint import pprint
-
 import requests
-from urllib3.exceptions import NewConnectionError
+import yaml
+from pathlib import Path
+import os
+from glances.config import Config
 
 from glances.plugins.glances_plugin import GlancesPlugin
 
@@ -40,9 +41,25 @@ class Plugin(GlancesPlugin):
         super(Plugin, self).__init__(args=args, config=config)
         self.display_curse = True
 
-        self.api_key = "D6968DF6F0E248D8B2B56476C8D7ED92"
-        self.printer_url = "http://0.0.0.0:5000/api/printer"
-        self.job_url = "http://0.0.0.0:5000/api/job"
+        home = str(Path.home())
+        # Get host, port and api_key from the config file
+        conf = Config()
+        self.host = conf.get_value(section="octoprint", option="host", default="http://0.0.0.0")
+        self.port = conf.get_value(section="octoprint", option="port", default="5000")
+        self.api_key = conf.get_value(section="octoprint", option="api_key", default=None)
+
+        if not self.api_key:
+            # Read API key from the local octoprint config
+            path = os.path.join(home, ".octoprint", "config.yaml")
+            if os.path.isfile(path):
+                with open(path, "r") as config_file:
+                    data = yaml.safe_load(config_file)
+                    self.api_key = data["api"]["key"]
+
+        if not "http" in self.host:
+            self.host = f"http://{self.host}"
+        self.printer_url = f"{self.host}:{self.port}/api/printer"
+        self.job_url = f"{self.host}:{self.port}/api/job"
         self.headers = {"X-Api-Key": self.api_key}
 
     @GlancesPlugin._check_decorator
