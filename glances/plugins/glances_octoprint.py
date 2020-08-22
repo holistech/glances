@@ -2,7 +2,7 @@
 #
 # This file is part of Glances.
 #
-# Copyright (C) 2018 Tim Nibert <docz2a@gmail.com>
+# Copyright (C) 2020 Sören Gebbert <soerengebbert@holistech.de>
 #
 # Glances is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -24,29 +24,35 @@ import requests
 import yaml
 from pathlib import Path
 import os
-from glances.config import Config
+import datetime
 
+from glances.config import Config
 from glances.plugins.glances_plugin import GlancesPlugin
 
 
 class Plugin(GlancesPlugin):
     """
-    Glances' HDD SMART plugin.
+    Glances' simple octorpint status plugin.
 
-    stats is a list of dicts
+    Be aware that the octoprint server must be available and the API key must be provided
+    to this plugin. By default the url is set to: http://0.0.0.0:5000 and the API key will
+    be read from the octoprint configuration file from the users home directory.
     """
 
     def __init__(self, args=None, config=None, stats_init_value=[]):
-        """Init the plugin."""
         super(Plugin, self).__init__(args=args, config=config)
         self.display_curse = True
+        self.host = "http://0.0.0.0"
+        self.port = 5000
+        self.api_key = None
 
         home = str(Path.home())
         # Get host, port and api_key from the config file
         conf = Config()
-        self.host = conf.get_value(section="octoprint", option="host", default="http://0.0.0.0")
-        self.port = conf.get_value(section="octoprint", option="port", default="5000")
-        self.api_key = conf.get_value(section="octoprint", option="api_key", default=None)
+        if conf.has_section("octoprint"):
+            self.host = conf.get_value(section="octoprint", option="host", default="http://0.0.0.0")
+            self.port = conf.get_value(section="octoprint", option="port", default="5000")
+            self.api_key = conf.get_value(section="octoprint", option="api_key", default=None)
 
         if not self.api_key:
             # Read API key from the local octoprint config
@@ -65,7 +71,8 @@ class Plugin(GlancesPlugin):
     @GlancesPlugin._check_decorator
     @GlancesPlugin._log_result_decorator
     def update(self):
-        """Update octoprint stats using the request."""
+        """Update octoprint stats using request and the octopi REST API.
+        """
 
         stats = self.get_init_value()
         try:
@@ -142,15 +149,17 @@ class Plugin(GlancesPlugin):
         target = None
         if self.stats["progress_printTime"] is not None:
             actual = int(self.stats["progress_printTime"])
+            actual = str(datetime.timedelta(seconds=actual))
         if self.stats["progress_printTimeLeft"] is not None:
             target = int(self.stats["progress_printTimeLeft"])
+            target = str(datetime.timedelta(seconds=target))
         msg = '{:{width}}'.format("Time passed:", width=name_max_width)
         ret.append(self.curse_add_line(msg))
-        tool_msg = "{actual:>6}s".format(actual=str(actual))
+        tool_msg = "{actual:>6}".format(actual=actual)
         ret.append(self.curse_add_line(tool_msg))
         ret.append(self.curse_new_line())
         msg = '{:{width}}'.format("Time left:", width=name_max_width)
         ret.append(self.curse_add_line(msg))
-        tool_msg = "{target:>6}s".format(target=str(target))
+        tool_msg = "{target:>6}".format(target=target)
         ret.append(self.curse_add_line(tool_msg))
         return ret
