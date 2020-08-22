@@ -8,7 +8,7 @@ cat << EOF >> $HOME/.bashrc
 SERVICE="glances"
 if pgrep -x "$SERVICE" >/dev/null
 then
-    echo "$SERVICE is running"
+    echo "$SERVICE webservice is running"
 else
     echo "start $SERVICE"
     $HOME/.local/bin/glances -w&
