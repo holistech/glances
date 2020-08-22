@@ -155,11 +155,11 @@ class Plugin(GlancesPlugin):
             target = str(datetime.timedelta(seconds=target))
         msg = '{:{width}}'.format("Time passed:", width=name_max_width)
         ret.append(self.curse_add_line(msg))
-        tool_msg = "{actual:>6}".format(actual=actual)
+        tool_msg = "{actual:>6}".format(actual=str(actual))
         ret.append(self.curse_add_line(tool_msg))
         ret.append(self.curse_new_line())
         msg = '{:{width}}'.format("Time left:", width=name_max_width)
         ret.append(self.curse_add_line(msg))
-        tool_msg = "{target:>6}".format(target=target)
+        tool_msg = "{target:>6}".format(target=str(target))
         ret.append(self.curse_add_line(tool_msg))
         return ret
